@@ -1,0 +1,142 @@
+---
+title: "Ex 1 - Trabalho 2"
+subtitle: "SME0808 - Séries Temporais e Aprendizado Dinâmico"
+author: 
+- "Sidnei Gazola Junior -- Nº USP: 9378888"
+date: "`r format(Sys.time(), '%d de %B de %Y')`"
+header-includes:
+   - \usepackage{float}
+   - \usepackage{here}
+   - \usepackage[brazil]{babel}
+   - \usepackage{caption}
+   - \usepackage{mathtools}
+   - \usepackage{setspace}\onehalfspacing
+output:
+  pdf_document: default
+  fig_caption: yes
+  urlcolor: blue
+  linkcolor: blue
+  fontsize: 12pt
+  geometry: margin=0.75in
+---
+
+\newcommand{\mar}{\hspace{.3cm}}
+\newcommand{\ld}{\vspace{.15cm}}
+
+```{r setup, echo = FALSE, results = 'hide'}
+knitr::opts_chunk$set(message = FALSE, warning = FALSE, 
+                      error = FALSE,fig.dim=c(6,4), fig.pos = "H")
+```
+
+```{r, echo = FALSE, results = 'hide'}
+rm(list = ls())
+ls()
+```
+
+```{r}
+library(tidyverse)
+library(forecast)
+library(lubridate)
+library(tinytex)
+library(fpp2)
+library(e1071)
+```
+
+# Simulando os dados
+
+```{r}
+phi = runif(1,0.70,0.95)
+v = runif(1,0.75,2)
+
+y= c()
+y[1]=1
+x= c()
+x[1]=1
+
+n=200
+
+for (t in 2:n) {
+  e = rnorm(1,0,v)
+  y[t]= phi * y[t-1] + e
+  x[t]=t
+}
+```
+
+Primeiramente foram simulados os dados dos modelos para os exercícios a seguir.
+Foram selecionados ao acaso no intervalo respectivo os valores dos parametros, obtendo:
+
+$\phi$ = ``r phi``
+
+$v$ = ``r v``
+
+## Plotagem dos dados simulados
+
+```{r}
+ggplot(mapping = aes(x=x,y=y)) +
+  geom_line() +
+  theme_bw() +
+  theme(legend.position = "none")  +
+  labs(x="x",y= "y")
+```
+
+# 1.a)
+
+```{r}
+F = t(y[2:n])
+Y = y[1:n-1]
+
+emv_phi = solve(F%*%t(F))%*%(F%*%Y)
+
+emv_v = (1/(n-1))*(t(Y-t(F)%*%emv_phi)%*%(Y-t(F)%*%emv_phi))
+```
+
+Com os dados em mãos foi aplicado o método MV, para os dados, obtendo os seguintes valores estimados:
+
+$\hat{\phi}$ = ``r emv_phi``
+
+$\hat{v}$ = ``r emv_v``
+
+\newpage
+
+# 1.b)
+
+```{r}
+bphi= c()
+bphi[1]=1
+bv= c()
+bv[1]=1
+
+nsim = 3000
+descarte <- 100
+espac <- 10
+
+for (m in 2:nsim) {
+  bv[m]= 1/(rgamma(1,n/2,(t(Y-t(F)%*%bphi[m-1])%*%(Y-t(F)%*%bphi[m-1]))/2))
+  bphi[m] = rnorm( 1,mean = bphi, bv[m] * solve(F%*%t(F))  )
+}
+
+## Ajuste de espaçamento e descarte
+
+bphi <- bphi[-(1:descarte)]
+bv <- bv[-(1:descarte)]
+
+b_phi_a <- b_v_a <- c()
+j= 1
+for (i in 1:(length(bphi)/espac)) {
+  b_phi_a[i]= bphi[j]
+  b_v_a[i]= bv[j]
+  j= j + espac 
+}
+bphi <- b_phi_a
+bv <- b_v_a
+
+eb_phi = mean(bphi)
+eb_v = mean(bv)
+
+```
+
+Com os dados em mãos foi aplicado o método usando aproximação normal, para os dados, obtendo os seguintes valores estimados:
+
+$\hat{\phi}$ = ``r eb_phi``
+
+$\hat{v}$ = ``r eb_v``
